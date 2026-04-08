@@ -2,7 +2,7 @@ const { Kafka } = require('kafkajs');
 const pLimit = require('p-limit');
 
 const { connectRedis } = require('../config/redisClient');
-const { processLog } = require('../processing/processLog');
+const { processLogEntry } = require('../processing/processLog');
 
 const kafka = new Kafka({
   clientId: 'main-consumer',
@@ -67,7 +67,7 @@ function enrichLog(log) {
 
 async function processMessage(log) {
   try {
-    await processLog(log);
+    await processLogEntry(log);
   } catch (error) {
       if (shouldRetry(log)) {
         await sendToRetryTopic(log);

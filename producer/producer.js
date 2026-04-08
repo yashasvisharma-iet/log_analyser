@@ -11,6 +11,12 @@ let externalFactor = 1.0;     // from control loop
 
 const MIN_RATE = 100;
 const MAX_RATE = 5000;
+const SERVICES = ['auth', 'payment', 'order'];
+const ENDPOINTS = {
+  auth: ['/login', '/signup'],
+  payment: ['/pay', '/refund'],
+  order: ['/create', '/status'],
+};
 
 const controlConsumer = kafka.consumer({ groupId: 'producer-control' });
 
@@ -105,12 +111,13 @@ function createKafkaMessageFromLog() {
 }
 
 function createLogPayload() {
+  const service = pickService();
   return {
     id: uuidv4(),
     trace_id: uuidv4(),
     timestamp: Date.now(),
-    service: SERVICE,
-    endpoint: pickEndpoint(),
+    service,
+    endpoint: pickEndpoint(service),
     method: "POST",
     status_code: 200,
     latency_ms: realisticLatency(),
@@ -171,3 +178,43 @@ function shouldAdjustBaseRate() {
 async function waitBeforeNextBatch() {
   await sleep(random(700, 1300));
 }
+
+function random(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickService() {
+  return SERVICES[random(0, SERVICES.length - 1)];
+}
+
+function pickEndpoint(service) {
+  const list = ENDPOINTS[service] || ['/unknown'];
+  return list[random(0, list.length - 1)];
+}
+
+function realisticLatency() {
+  return random(10, 1200);
+}
+
+function normalizeFactor(factor) {
+  const parsed = Number(factor);
+  if (!Number.isFinite(parsed)) return 1.0;
+  return Math.max(0.1, Math.min(3.0, parsed));
+}
+
+function logControlUpdate(factor) {
+  console.log(`🎛️ Control update factor=${factor.toFixed(2)}`);
+}
+
+function limitRateWithinBounds(rate) {
+  return Math.max(MIN_RATE, Math.min(MAX_RATE, rate));
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+runProducer().catch((error) => {
+  console.error('🔥 PRODUCER FAILED:', error);
+  process.exit(1);
+});

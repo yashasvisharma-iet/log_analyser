@@ -1,4 +1,4 @@
-const {client} = require('../redisClient');
+const { client } = require('../config/redisClient');
 
 async function isDuplicate (id) {
   try {
@@ -64,7 +64,18 @@ async function updateMetrics ({
 
 
 module.exports = {
+  addToDLQ,
   isDuplicate,
   markAsProcessed,
   updateMetrics
 };
+
+async function addToDLQ(log, reason) {
+  const key = `dlq:${log.id}`;
+  await client.hSet(key, {
+    payload: JSON.stringify(log),
+    reason: reason || 'UNKNOWN',
+    created_at: Date.now().toString(),
+  });
+  await client.expire(key, 86400);
+}

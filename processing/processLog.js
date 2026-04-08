@@ -5,7 +5,7 @@ const db = require('../db/fakeDb');
 
 async function processLogEntry(log) {
   validate(log);
-  log.retry_count = Number.isInteger(log.retry_count)
+  log.retry_count = Number.isInteger(log.retry_count) ? log.retry_count : 0;
 
   if (await isDuplicate(log.id)) return;
 
